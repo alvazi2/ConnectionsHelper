@@ -1,0 +1,179 @@
+:root {
+  --bg: #ffffff;
+  --fg: #121212;
+  --muted: #5a5a5a;
+  --error: #b3261e;
+  --accent: #121212;
+  --accent-fg: #ffffff;
+  --tile: #efefe6;
+  --tile-fg: #000000;
+  --yellow: #f9df6d;
+  --green: #a0c35a;
+  --blue: #b0c4ef;
+  --purple: #ba81c5;
+  --gap: 8px;
+  --board-width: min(100%, 960px, calc((100dvh - 200px) * 1.8));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --fg: #f5f5f5;
+    --muted: #a8a8a8;
+    --error: #ff8a80;
+    --accent: #f5f5f5;
+    --accent-fg: #121212;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+body.board-mode {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+}
+
+h1 { font-size: 1.6rem; margin: 0 0 0.5rem; }
+
+/* ---- Load screen ---- */
+#load-screen { justify-content: center; }
+.load-card { max-width: 32rem; text-align: center; }
+.load-card p { line-height: 1.45; }
+
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.6rem 1.2rem;
+  border: 1.5px solid var(--fg);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.button.primary {
+  margin-top: 0.5rem;
+  padding: 0.9rem 2rem;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 1.15rem;
+}
+.button.busy { opacity: 0.5; pointer-events: none; }
+#back-button { margin-top: 0.5rem; }
+
+/* Visually hidden but still clickable through its label (iOS ignores display:none file inputs). */
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.hint { color: var(--muted); font-size: 0.95rem; text-align: center; }
+
+.status { width: min(100%, 20rem); margin: 1.25rem auto 0; }
+.status-text { font-size: 0.95rem; }
+.progress {
+  height: 6px;
+  margin-top: 0.5rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--fg) 15%, transparent);
+  overflow: hidden;
+}
+.progress-bar { width: 0; height: 100%; background: var(--fg); transition: width 150ms; }
+.error { color: var(--error); }
+
+/* ---- Board ---- */
+#board-screen { gap: 1rem; }
+
+.toolbar {
+  width: var(--board-width);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.toolbar h1 { margin: 0; font-size: 1.3rem; }
+.toolbar-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+.board {
+  width: var(--board-width);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.tile {
+  position: relative;
+  aspect-ratio: 1.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--tile);
+  color: var(--tile-fg);
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 200ms ease, background-color 150ms, box-shadow 150ms;
+}
+.tile[data-color="yellow"] { background: var(--yellow); }
+.tile[data-color="green"] { background: var(--green); }
+.tile[data-color="blue"] { background: var(--blue); }
+.tile[data-color="purple"] { background: var(--purple); }
+
+.tile-label {
+  display: inline-block;
+  font-size: 1.2rem;
+  line-height: 1.1;
+  pointer-events: none;
+}
+
+.tile.dragging {
+  z-index: 10;
+  cursor: grabbing;
+  transition: none;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+.tile.settling { z-index: 5; }
+.tile.drop-target { box-shadow: inset 0 0 0 4px #5a594e; }

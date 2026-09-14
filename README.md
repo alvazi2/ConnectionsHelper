@@ -1,0 +1,45 @@
+# Connections Helper
+
+A different way to play the NYT Connections puzzle on an iPad. You load a screenshot of the puzzle, and the app reads the 16 words and lays them out as tiles you can move around while you work out the groups.
+
+- **Drag** a tile onto another tile to swap them.
+- **Tap** a tile to cycle its color: yellow → green → blue → purple → none.
+- **Clear colors** removes all color tags. **New screenshot** loads a different puzzle.
+- The board is saved in the browser, so closing and reopening the app keeps your arrangement.
+
+Words are read in the browser with [Tesseract.js](https://github.com/naptha/tesseract.js). Nothing is uploaded. The first run downloads the text-recognition engine and English language data from jsDelivr (a few MB). After that they're cached.
+
+## Using it on the iPad
+
+1. Take a screenshot of the Connections puzzle. It can be cropped to the grid or show the whole page.
+2. Open the app and tap **Load screenshot**, then pick the image from Photos or Files. You can also paste an image, or drag one in from another app in Split View.
+3. To install it: in Safari, tap **Share → Add to Home Screen**. It then opens full screen like a regular app.
+
+## Hosting on GitHub Pages
+
+1. Create an empty repository on GitHub, for example `connections-helper`.
+2. Push this folder:
+   ```sh
+   git remote add origin git@github.com:<your-user>/connections-helper.git
+   git push -u origin main
+   ```
+3. On GitHub, go to **Settings → Pages**. Under **Build and deployment**, choose **Deploy from a branch**, then branch `main` and folder `/ (root)`.
+4. After a minute the app is live at `https://<your-user>.github.io/connections-helper/`.
+
+## Running locally
+
+```sh
+python3 -m http.server 8000
+```
+
+Then open <http://localhost:8000> on the Mac, or `http://<mac-ip>:8000` on an iPad on the same Wi-Fi. Add `?demo` to the URL to load the bundled sample screenshot automatically.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `index.html` | App shell |
+| `styles.css` | Layout and tile styles |
+| `ocr.js` | Finds the tile grid in the screenshot and reads each tile's word |
+| `app.js` | Board state, drag-to-swap, tap-to-color, saving |
+| `samples/example.png` | Sample screenshot used by `?demo` |

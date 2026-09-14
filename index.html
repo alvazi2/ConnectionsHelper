@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Connections">
+  <title>Connections Helper</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
+  <script src="ocr.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main id="load-screen" class="screen">
+    <div class="load-card">
+      <h1>Connections Helper</h1>
+      <p>Load a screenshot of today's Connections puzzle. The words are read from the image and laid out as tiles you can move around.</p>
+      <label class="button primary" id="load-button">
+        Load screenshot
+        <input type="file" id="file-input" class="file-input" accept="image/*">
+      </label>
+      <p class="hint">You can also paste or drop an image here.</p>
+      <div id="status" class="status" hidden>
+        <div id="status-text" class="status-text"></div>
+        <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+      </div>
+      <p id="error" class="error" role="alert" hidden></p>
+      <button type="button" class="button" id="back-button" hidden>Back to puzzle</button>
+    </div>
+  </main>
+
+  <main id="board-screen" class="screen" hidden>
+    <header class="toolbar">
+      <h1>Connections Helper</h1>
+      <div class="toolbar-actions">
+        <button type="button" class="button" id="clear-button">Clear colors</button>
+        <button type="button" class="button" id="new-button">New screenshot</button>
+      </div>
+    </header>
+    <div id="board" class="board"></div>
+    <p class="hint">Drag a tile onto another to swap them. Tap a tile to change its color.</p>
+  </main>
+</body>
+</html>
