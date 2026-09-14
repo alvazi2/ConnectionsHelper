@@ -20,11 +20,14 @@
     <div class="load-card">
       <h1>Connections Helper</h1>
       <p>Load a screenshot of today's Connections puzzle. The words are read from the image and laid out as tiles you can move around.</p>
-      <label class="button primary" id="load-button">
-        Load screenshot
-        <input type="file" id="file-input" class="file-input" accept="image/*">
-      </label>
-      <p class="hint">You can also paste or drop an image here.</p>
+      <div class="load-actions">
+        <label class="button primary large" id="load-button">
+          Load screenshot
+          <input type="file" id="file-input" class="file-input" accept="image/*">
+        </label>
+        <button type="button" class="button large" id="paste-button" hidden>Paste screenshot</button>
+      </div>
+      <p class="hint">You can also drop an image here.</p>
       <div id="status" class="status" hidden>
         <div id="status-text" class="status-text"></div>
         <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>

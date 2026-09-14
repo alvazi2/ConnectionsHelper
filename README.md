@@ -12,7 +12,10 @@ Words are read in the browser with [Tesseract.js](https://github.com/naptha/tess
 ## Using it on the iPad
 
 1. Take a screenshot of the Connections puzzle. It can be cropped to the grid or show the whole page.
-2. Open the app and tap **Load screenshot**, then pick the image from Photos or Files. You can also paste an image, or drag one in from another app in Split View.
+2. Open the app and tap **Load screenshot**, then pick the image from Photos or Files. You can also drag one in from another app in Split View.
+   - **From the clipboard:** tap **Paste screenshot**, then tap Safari's **Paste** bubble to allow it. To copy a screenshot instead of saving it, tap the thumbnail right after taking it, tap **Done**, and choose **Copy and Delete**. Or long-press a screenshot in Photos and choose **Copy**.
+   - The Paste button needs HTTPS (or `localhost`), so it's hidden when the app is opened over plain `http://` from another device.
+   - With a hardware keyboard, Cmd+V also works.
 3. To install it: in Safari, tap **Share → Add to Home Screen**. It then opens full screen like a regular app.
 
 ## Hosting on GitHub Pages

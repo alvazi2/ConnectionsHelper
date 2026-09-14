@@ -13,6 +13,7 @@
   const board = $('board');
   const fileInput = $('file-input');
   const loadButton = $('load-button');
+  const pasteButton = $('paste-button');
   const backButton = $('back-button');
   const statusBox = $('status');
   const statusText = $('status-text');
@@ -60,6 +61,7 @@
   function setBusy(value) {
     busy = value;
     loadButton.classList.toggle('busy', value);
+    pasteButton.classList.toggle('busy', value);
     fileInput.disabled = value;
     statusBox.hidden = !value;
     backButton.hidden = value || tiles.length === 0;
@@ -124,6 +126,29 @@
       setBusy(false);
       showScreen('load');
       showError(err.message || String(err));
+    }
+  }
+
+  // Must start from the tap itself: Safari only allows clipboard reads inside a user gesture,
+  // and shows its own "Paste" confirmation for content copied from another app.
+  async function pasteFromClipboard() {
+    if (busy) return;
+    errorBox.hidden = true;
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const type = item.types.find((t) => t.startsWith('image/'));
+        if (!type) continue;
+        const blob = await item.getType(type);
+        loadImage(blob.type ? blob : new Blob([blob], { type }));
+        return;
+      }
+      showError('There is no image on the clipboard. Copy a screenshot first, then tap Paste screenshot.');
+    } catch (err) {
+      console.error(err);
+      showError(err.name === 'NotAllowedError'
+        ? "Clipboard access wasn't allowed. Tap Paste screenshot again and choose Paste."
+        : "Couldn't read the clipboard.");
     }
   }
 
@@ -292,6 +317,10 @@
     fileInput.value = '';
     if (file) loadImage(file);
   });
+
+  // The async clipboard API only exists in secure contexts (HTTPS or localhost).
+  pasteButton.hidden = typeof navigator.clipboard?.read !== 'function';
+  pasteButton.addEventListener('click', pasteFromClipboard);
 
   backButton.addEventListener('click', () => {
     errorBox.hidden = true;
