@@ -48,3 +48,15 @@ Then open <http://localhost:8000> on the Mac, or `http://<mac-ip>:8000` on an iP
 | `app.js` | Board state, drag-to-swap, tap-to-color, saving |
 | `samples/example.png` | Sample screenshot used by `?demo` |
 | `samples/example-symbols.png` | Sample with symbols instead of words, used by `?demo=symbols` |
+
+## Tuning the reader
+
+Three constants in `ocr.js` decide how a screenshot is turned into tiles. Change one only if a puzzle comes out wrong, and check both samples afterwards.
+
+| Constant | What it does | When to change it |
+|---|---|---|
+| `MIN_WORD_CONFIDENCE` (60) | How sure the text reader must be for a tile to count as a word. Below it, the tile becomes a picture cut from the screenshot. | Raise it if symbol tiles show junk letters instead of pictures. Lower it if a normal word puzzle turns into pictures. |
+| `INNER_BACKGROUND_SHARE` (0.4) | A picture tile also drops a second background when one flat color covers this much of the tile beyond the tile color, such as a card the symbol sits on. | Lower it if a card stays behind a symbol and hides the color tag. Raise it if part of a real picture is being erased. |
+| Column threshold (0.25, in `gridFromMask`) | How much of a column must be tile color for it to count as part of a tile. | Raise it if things that aren't tiles are picked up as a grid. Lower it if tiles holding a large symbol aren't found at all. |
+
+Verified on 2026-09-15: these values read both bundled samples correctly on an iPad.
