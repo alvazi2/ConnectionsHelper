@@ -5,6 +5,10 @@
   const LOAD_ERROR = "The text reader couldn't load. Check your internet connection and try again.";
   const WORD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '-&.!";
   const COLOR_TOLERANCE = 14;
+  const MIN_WORD_CONFIDENCE = 60;
+  const CROP_MAX_HEIGHT = 200;
+  const CROP_EDGE_RAMP = 40;
+  const INNER_BACKGROUND_SHARE = 0.4;
 
   let workerPromise = null;
   let logHandler = null;
@@ -93,7 +97,8 @@
       for (let y = y0; y < y1; y++) {
         for (let x = 0, off = y * width; x < width; x++) colCounts[x] += mask[off + x];
       }
-      const cols = findRuns(width, (x) => colCounts[x] > bandHeight * 0.5, 2, minRun);
+      // A low bar so a large pictogram in the middle of a tile doesn't split it into several columns.
+      const cols = findRuns(width, (x) => colCounts[x] > bandHeight * 0.25, 2, minRun);
       if (cols.length !== 4) continue;
       const widths = cols.map(([s, e]) => e - s);
       const maxWidth = Math.max(...widths);
@@ -120,15 +125,20 @@
       r.cols.map(([x0, x1]) => ({ x: x0, y: r.y0, width: x1 - x0, height: r.y1 - r.y0 })));
   }
 
-  function findTileRects(canvas) {
+  // The tile rectangles in reading order, plus the tile color they were found with.
+  function findGrid(canvas) {
     const { width, height } = canvas;
     const { data } = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, width, height);
-    let best = [];
+    let best = { rects: [], color: null };
     for (const color of colorCandidates(data, width * height)) {
       const rects = gridFromMask(buildMask(data, width, height, color), width, height);
-      if (rects.length > best.length) best = rects;
+      if (rects.length > best.rects.length) best = { rects, color };
     }
     return best;
+  }
+
+  function findTileRects(canvas) {
+    return findGrid(canvas).rects;
   }
 
   // ---- Tile preprocessing ----
@@ -201,6 +211,66 @@
     return out;
   }
 
+  // How opaque a pixel is once a background color is keyed out: transparent at the color itself,
+  // fading in over a ramp rather than cutting hard, so anti-aliased edges don't leave a fringe.
+  function keyAlpha(d, i, r, g, b) {
+    const distance = Math.max(Math.abs(d[i] - r), Math.abs(d[i + 1] - g), Math.abs(d[i + 2] - b));
+    return Math.min(1, Math.max(0, (distance - COLOR_TOLERANCE) / CROP_EDGE_RAMP));
+  }
+
+  // Some puzzles sit their symbols on a card of their own inside the tile. That card is a second
+  // background: one flat color covering most of what's left once the tile color is keyed out.
+  function innerBackground(d, alpha) {
+    const counts = new Uint32Array(32768);
+    const sums = new Float64Array(32768 * 3);
+    let total = 0;
+    for (let p = 0, i = 0; p < alpha.length; p++, i += 4) {
+      if (alpha[p] <= 0) continue;
+      const key = ((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3);
+      counts[key]++;
+      sums[key * 3] += d[i];
+      sums[key * 3 + 1] += d[i + 1];
+      sums[key * 3 + 2] += d[i + 2];
+      total++;
+    }
+    if (!total) return null;
+    let top = 0;
+    for (let k = 1; k < counts.length; k++) if (counts[k] > counts[top]) top = k;
+    if (counts[top] <= total * INNER_BACKGROUND_SHARE) return null;
+    return [sums[top * 3] / counts[top], sums[top * 3 + 1] / counts[top], sums[top * 3 + 2] / counts[top]];
+  }
+
+  // Cuts a tile's picture out of the screenshot, for tiles that hold a symbol instead of a word.
+  // Pixels near the tile color become transparent so the board's tile color and color tags show through.
+  function tileCrop(source, rect, [r, g, b]) {
+    const inset = Math.round(Math.min(rect.width, rect.height) * 0.06);
+    const sw = rect.width - 2 * inset;
+    const sh = rect.height - 2 * inset;
+    const scale = Math.min(1, CROP_MAX_HEIGHT / sh);
+
+    const out = document.createElement('canvas');
+    out.width = Math.max(1, Math.round(sw * scale));
+    out.height = Math.max(1, Math.round(sh * scale));
+    const ctx = out.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(source, rect.x + inset, rect.y + inset, sw, sh, 0, 0, out.width, out.height);
+
+    const image = ctx.getImageData(0, 0, out.width, out.height);
+    const d = image.data;
+    const alpha = new Float32Array(out.width * out.height);
+    for (let p = 0, i = 0; p < alpha.length; p++, i += 4) alpha[p] = keyAlpha(d, i, r, g, b);
+
+    const inner = innerBackground(d, alpha);
+    if (inner) {
+      for (let p = 0, i = 0; p < alpha.length; p++, i += 4) {
+        alpha[p] = Math.min(alpha[p], keyAlpha(d, i, inner[0], inner[1], inner[2]));
+      }
+    }
+    for (let p = 0, i = 0; p < alpha.length; p++, i += 4) d[i + 3] = Math.round(alpha[p] * 255);
+    ctx.putImageData(image, 0, 0);
+    return out.toDataURL('image/png');
+  }
+
   // ---- Reading ----
 
   function cleanWord(text) {
@@ -237,7 +307,7 @@
       .flatMap((r) => r.words.sort((a, b) => a.bbox.x0 - b.bbox.x0).map((w) => w.text))
       .slice(0, 16);
     onProgress('Done', 1);
-    return { words, rects: [] };
+    return { words, images: words.map(() => null), rects: [] };
   }
 
   async function readPuzzle(canvas, onProgress = () => {}) {
@@ -253,7 +323,7 @@
     }
 
     onProgress('Finding the tiles…', 0.1);
-    const rects = findTileRects(canvas);
+    const { rects, color } = findGrid(canvas);
     if (!rects.length) return readWholeImage(worker, canvas, onProgress);
 
     await worker.setParameters({
@@ -262,13 +332,20 @@
       preserve_interword_spaces: '1',
     });
     const words = [];
+    const readable = [];
     for (let i = 0; i < rects.length; i++) {
       onProgress(`Reading tile ${i + 1} of ${rects.length}…`, 0.1 + 0.9 * (i / rects.length));
       const { data } = await worker.recognize(tileImage(canvas, rects[i]));
-      words.push(cleanWord(data.text));
+      const word = cleanWord(data.text);
+      words.push(word);
+      readable.push(/[A-Z0-9]/.test(word) && data.confidence >= MIN_WORD_CONFIDENCE);
     }
+
+    // Picture puzzles use pictures on every tile, so if most tiles didn't read as words, show them all as pictures.
+    const allPictures = readable.filter((ok) => !ok).length > rects.length / 2;
+    const images = rects.map((rect, i) => (allPictures || !readable[i] ? tileCrop(canvas, rect, color) : null));
     onProgress('Done', 1);
-    return { words, rects };
+    return { words, images, rects };
   }
 
   window.ConnectionsOCR = { readPuzzle, findTileRects };

@@ -6,6 +6,7 @@ A different way to play the NYT Connections puzzle on an iPad. You load a screen
 - **Tap** a tile to cycle its color: yellow → green → blue → purple → none.
 - **Clear colors** removes all color tags. **New screenshot** loads a different puzzle.
 - The board is saved in the browser, so closing and reopening the app keeps your arrangement.
+- If a tile holds a symbol or picture instead of a word, the tile shows that picture cut from the screenshot. When most tiles look like pictures, every tile is shown as a picture.
 
 Words are read in the browser with [Tesseract.js](https://github.com/naptha/tesseract.js). Nothing is uploaded. The first run downloads the text-recognition engine and English language data from jsDelivr (a few MB). After that they're cached.
 
@@ -35,7 +36,7 @@ Words are read in the browser with [Tesseract.js](https://github.com/naptha/tess
 python3 -m http.server 8000
 ```
 
-Then open <http://localhost:8000> on the Mac, or `http://<mac-ip>:8000` on an iPad on the same Wi-Fi. Add `?demo` to the URL to load the bundled sample screenshot automatically.
+Then open <http://localhost:8000> on the Mac, or `http://<mac-ip>:8000` on an iPad on the same Wi-Fi. Add `?demo` to the URL to load the bundled sample screenshot automatically, or `?demo=symbols` for the sample whose tiles hold symbols instead of words.
 
 ## Files
 
@@ -46,3 +47,4 @@ Then open <http://localhost:8000> on the Mac, or `http://<mac-ip>:8000` on an iP
 | `ocr.js` | Finds the tile grid in the screenshot and reads each tile's word |
 | `app.js` | Board state, drag-to-swap, tap-to-color, saving |
 | `samples/example.png` | Sample screenshot used by `?demo` |
+| `samples/example-symbols.png` | Sample with symbols instead of words, used by `?demo=symbols` |

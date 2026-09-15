@@ -20,7 +20,7 @@
   const progressBar = $('progress-bar');
   const errorBox = $('error');
 
-  let tiles = []; // [{ id, word, color }] in grid order
+  let tiles = []; // [{ id, word, image, color }] in grid order; image is a data URL for picture tiles
   const tileEls = new Map();
   let drag = null;
   let busy = false;
@@ -31,7 +31,13 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ tiles }));
     } catch {
-      // Storage unavailable (e.g. private browsing); the board still works for this session.
+      // Storage unavailable (e.g. private browsing) or full (picture tiles); the board still works
+      // for this session. Drop any older saved board so a reload doesn't bring back a previous puzzle.
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // Nothing more to do.
+      }
     }
   }
 
@@ -42,6 +48,7 @@
       return saved.tiles.map((t, i) => ({
         id: String(t.id ?? `t${i}`),
         word: String(t.word ?? '?'),
+        image: typeof t.image === 'string' && t.image.startsWith('data:image/') ? t.image : null,
         color: COLORS.includes(t.color) ? t.color : null,
       }));
     } catch {
@@ -112,11 +119,11 @@
     setStatus('Opening screenshot…', 0);
     try {
       const canvas = await blobToCanvas(blob);
-      const { words } = await window.ConnectionsOCR.readPuzzle(canvas, setStatus);
+      const { words, images } = await window.ConnectionsOCR.readPuzzle(canvas, setStatus);
       if (!words.length) {
         throw new Error("Couldn't find any puzzle words in that image. Try a screenshot that shows the whole grid.");
       }
-      tiles = words.map((word, i) => ({ id: `t${i}`, word, color: null }));
+      tiles = words.map((word, i) => ({ id: `t${i}`, word, image: images[i] ?? null, color: null }));
       save();
       setBusy(false);
       showScreen('board');
@@ -159,7 +166,8 @@
     if (!el) return;
     if (tile.color) el.dataset.color = tile.color;
     else delete el.dataset.color;
-    el.setAttribute('aria-label', tile.color ? `${tile.word}, ${tile.color}` : tile.word);
+    const name = tile.image ? 'Picture tile' : tile.word;
+    el.setAttribute('aria-label', tile.color ? `${name}, ${tile.color}` : name);
   }
 
   function buildBoard() {
@@ -169,10 +177,19 @@
       const el = document.createElement('div');
       el.className = 'tile';
       el.dataset.id = tile.id;
-      const label = document.createElement('span');
-      label.className = 'tile-label';
-      label.textContent = tile.word;
-      el.append(label);
+      if (tile.image) {
+        const img = document.createElement('img');
+        img.className = 'tile-image';
+        img.src = tile.image;
+        img.alt = '';
+        img.draggable = false;
+        el.append(img);
+      } else {
+        const label = document.createElement('span');
+        label.className = 'tile-label';
+        label.textContent = tile.word;
+        el.append(label);
+      }
       el.addEventListener('pointerdown', onPointerDown);
       el.addEventListener('pointermove', onPointerMove);
       el.addEventListener('pointerup', onPointerUp);
@@ -186,7 +203,8 @@
 
   // Shrinks a label's font until the word fits inside its tile.
   function fitLabel(el) {
-    const label = el.firstElementChild;
+    const label = el.querySelector('.tile-label');
+    if (!label) return;
     const maxWidth = el.clientWidth - 16;
     const maxHeight = el.clientHeight - 8;
     if (maxWidth <= 0) return;
@@ -366,8 +384,9 @@
 
   // ---- Start ----
 
-  if (new URLSearchParams(location.search).has('demo')) {
-    fetch('samples/example.png')
+  const demo = new URLSearchParams(location.search).get('demo');
+  if (demo !== null) {
+    fetch(demo === 'symbols' ? 'samples/example-symbols.png' : 'samples/example.png')
       .then((res) => {
         if (!res.ok) throw new Error("Couldn't load the demo screenshot.");
         return res.blob();

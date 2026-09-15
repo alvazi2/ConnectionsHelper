@@ -175,6 +175,18 @@ h1 { font-size: 1.6rem; margin: 0 0 0.5rem; }
   pointer-events: none;
 }
 
+/* Tiles that hold a symbol instead of a word show the picture cut from the screenshot. */
+.tile-image {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 8px);
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
 .tile.dragging {
   z-index: 10;
   cursor: grabbing;
