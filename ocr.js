@@ -194,7 +194,10 @@
   }
 
   function tileImage(source, rect) {
-    const insetX = rect.width * 0.05;
+    // The puzzle shrinks the font so a long word such as FRANK-N-FURTER still fits on one line, and
+    // such a word then runs to within a couple of percent of the tile edge. Trim only the tile's own
+    // border: a wider trim eats the first and last letter, and the mangled word is read as a picture.
+    const insetX = rect.width * 0.02;
     const insetY = rect.height * 0.12;
     const sw = rect.width - 2 * insetX;
     const sh = rect.height - 2 * insetY;
