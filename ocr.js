@@ -5,6 +5,8 @@
   const LOAD_ERROR = "The text reader couldn't load. Check your internet connection and try again.";
   const WORD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '-&.!";
   const COLOR_TOLERANCE = 14;
+  const PSM_TEXT_BLOCK = '6';
+  const PSM_SINGLE_LINE = '7';
   const MIN_WORD_CONFIDENCE = 60;
   const CROP_MAX_HEIGHT = 200;
   const CROP_EDGE_RAMP = 40;
@@ -168,6 +170,7 @@
   }
 
   // Converts a region to black text on white, inverting if the text is lighter than the tile.
+  // Returns the number of ink pixels in each row.
   function binarize(ctx, x, y, w, h) {
     const image = ctx.getImageData(x, y, w, h);
     const d = image.data;
@@ -181,12 +184,36 @@
     let dark = 0;
     for (let p = 0; p < gray.length; p++) if (gray[p] <= threshold) dark++;
     const invert = dark > gray.length / 2;
+    const rowInk = new Uint32Array(h);
     for (let p = 0, i = 0; p < gray.length; p++, i += 4) {
       const ink = invert ? gray[p] > threshold : gray[p] <= threshold;
       d[i] = d[i + 1] = d[i + 2] = ink ? 0 : 255;
       d[i + 3] = 255;
+      if (ink) rowInk[(p / w) | 0]++;
     }
     ctx.putImageData(image, x, y);
+    return rowInk;
+  }
+
+  // How many lines of text a binarized tile holds, so a long word that wrapped isn't read as one line.
+  // Only bands shaped like tile text count: a couple of equally tall bands, none taller than a line of
+  // text, spaced the way two lines of one word are. A symbol keeps the single-line reading it is judged
+  // as a picture by, however its ink happens to fall into bands.
+  function textLineCount(rowInk, width, height) {
+    const minInk = Math.max(2, Math.round(width * 0.01));
+    const bands = findRuns(height, (y) => rowInk[y] >= minInk,
+      Math.max(1, Math.round(height * 0.02)), Math.round(height * 0.06));
+    if (bands.length < 2 || bands.length > 3) return 1;
+
+    const heights = bands.map(([y0, y1]) => y1 - y0);
+    const tallest = Math.max(...heights);
+    if (tallest > height * 0.35) return 1;
+    if (Math.min(...heights) < tallest * 0.6) return 1;
+    for (let i = 1; i < bands.length; i++) {
+      const gap = bands[i][0] - bands[i - 1][1];
+      if (gap < tallest * 0.3 || gap > tallest * 1.5) return 1;
+    }
+    return bands.length;
   }
 
   function tileImage(source, rect) {
@@ -207,8 +234,8 @@
     ctx.fillRect(0, 0, out.width, out.height);
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(source, rect.x + insetX, rect.y + insetY, sw, sh, pad, pad, w, h);
-    binarize(ctx, pad, pad, w, h);
-    return out;
+    const rowInk = binarize(ctx, pad, pad, w, h);
+    return { canvas: out, lines: textLineCount(rowInk, w, h) };
   }
 
   // How opaque a pixel is once a background color is keyed out: transparent at the color itself,
@@ -326,19 +353,35 @@
     const { rects, color } = findGrid(canvas);
     if (!rects.length) return readWholeImage(worker, canvas, onProgress);
 
+    let pageSegMode = PSM_SINGLE_LINE;
     await worker.setParameters({
-      tessedit_pageseg_mode: '7',
+      tessedit_pageseg_mode: pageSegMode,
       tessedit_char_whitelist: WORD_CHARS,
       preserve_interword_spaces: '1',
     });
+    const usePageSegMode = async (mode) => {
+      if (mode === pageSegMode) return;
+      pageSegMode = mode;
+      await worker.setParameters({ tessedit_pageseg_mode: mode });
+    };
+
     const words = [];
     const readable = [];
     for (let i = 0; i < rects.length; i++) {
       onProgress(`Reading tile ${i + 1} of ${rects.length}…`, 0.1 + 0.9 * (i / rects.length));
-      const { data } = await worker.recognize(tileImage(canvas, rects[i]));
-      const word = cleanWord(data.text);
+      const tile = tileImage(canvas, rects[i]);
+      // A wrapped word needs the block mode; a single line still reads best as one line, so a tile
+      // that only looked wrapped falls back to it rather than keeping an unsure block reading.
+      let best = null;
+      for (const mode of tile.lines > 1 ? [PSM_TEXT_BLOCK, PSM_SINGLE_LINE] : [PSM_SINGLE_LINE]) {
+        await usePageSegMode(mode);
+        const { data } = await worker.recognize(tile.canvas);
+        if (!best || data.confidence > best.confidence) best = data;
+        if (best.confidence >= MIN_WORD_CONFIDENCE) break;
+      }
+      const word = cleanWord(best.text);
       words.push(word);
-      readable.push(/[A-Z0-9]/.test(word) && data.confidence >= MIN_WORD_CONFIDENCE);
+      readable.push(/[A-Z0-9]/.test(word) && best.confidence >= MIN_WORD_CONFIDENCE);
     }
 
     // Picture puzzles use pictures on every tile, so if most tiles didn't read as words, show them all as pictures.
