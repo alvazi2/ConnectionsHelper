@@ -11,6 +11,8 @@ A different way to play the NYT Connections puzzle on an iPad. You load a screen
 
 Words are read in the browser with [Tesseract.js](https://github.com/naptha/tesseract.js). Nothing is uploaded. The first run downloads the text-recognition engine and English language data from jsDelivr (a few MB). After that they're cached.
 
+The language data is Tesseract's `fast` model rather than the `best_int` one Tesseract.js loads by default, because `best_int` misreads the puzzle's bold capitals as small letters (see `LANG_PATH` in `ocr.js`).
+
 ## Using it on the iPad
 
 1. Take a screenshot of the Connections puzzle. It can be cropped to the grid or show the whole page.
@@ -57,7 +59,7 @@ Three constants in `ocr.js` decide how a screenshot is turned into tiles. Change
 | Constant | What it does | When to change it |
 |---|---|---|
 | `MIN_WORD_CONFIDENCE` (60) | How sure the text reader must be for a tile to count as a word. Below it, the tile becomes a picture cut from the screenshot. | Raise it if symbol tiles show junk letters instead of pictures. Lower it if a normal word puzzle turns into pictures. |
-| `INNER_BACKGROUND_SHARE` (0.4) | A picture tile also drops a second background when one flat color covers this much of the tile beyond the tile color, such as a card the symbol sits on. | Lower it if a card stays behind a symbol and hides the color tag. Raise it if part of a real picture is being erased. |
+| `INNER_BACKGROUND_SHARE` (0.15) | A picture tile also drops a second background when one flat color covers this share of the tile beyond the tile color, such as a card the symbol sits on. | Lower it if a card stays behind a symbol and hides the color tag. Raise it if part of a real picture is being erased. |
 | Column threshold (0.25, in `gridFromMask`) | How much of a column must be tile color for it to count as part of a tile. | Raise it if things that aren't tiles are picked up as a grid. Lower it if tiles holding a large symbol aren't found at all. |
 
 Verified on 2026-09-15: these values read both bundled samples correctly on an iPad.

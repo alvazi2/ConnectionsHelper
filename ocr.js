@@ -12,7 +12,11 @@
   const MIN_WORD_CONFIDENCE = 60;
   const CROP_MAX_HEIGHT = 200;
   const CROP_EDGE_RAMP = 40;
-  const INNER_BACKGROUND_SHARE = 0.4;
+  const INNER_BACKGROUND_SHARE = 0.15;
+  // Tesseract.js defaults to the "best_int" model, which can't tell a capital from a small letter in
+  // the puzzle's bold face: OUT reads as "out", and forcing capitals through the whitelist scores the
+  // word 0, so the tile falls back to a picture. The "fast" model reads the same tile at 96.
+  const LANG_PATH = 'https://cdn.jsdelivr.net/gh/tesseract-ocr/tessdata_fast@4.1.0';
 
   let workerPromise = null;
   let logHandler = null;
@@ -21,6 +25,8 @@
     if (!window.Tesseract) return Promise.reject(new Error(LOAD_ERROR));
     if (!workerPromise) {
       workerPromise = Tesseract.createWorker('eng', 1, {
+        langPath: LANG_PATH,
+        gzip: false,
         logger: (m) => logHandler && logHandler(m),
       }).catch((err) => {
         console.error(err);
@@ -226,11 +232,13 @@
   }
 
   // Some puzzles sit their symbols on a card of their own inside the tile. That card is a second
-  // background: one flat color covering most of what's left once the tile color is keyed out.
+  // background: one flat color covering a good part of the tile once the tile color is keyed out.
+  // The share is measured against the whole tile, not against what's left: on a tile that holds a
+  // word, the letters' own ink is the most common color left over, and keying it out as a card
+  // leaves nothing but the letters' anti-aliased outlines.
   function innerBackground(d, alpha) {
     const counts = new Uint32Array(32768);
     const sums = new Float64Array(32768 * 3);
-    let total = 0;
     for (let p = 0, i = 0; p < alpha.length; p++, i += 4) {
       if (alpha[p] <= 0) continue;
       const key = ((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3);
@@ -238,12 +246,10 @@
       sums[key * 3] += d[i];
       sums[key * 3 + 1] += d[i + 1];
       sums[key * 3 + 2] += d[i + 2];
-      total++;
     }
-    if (!total) return null;
     let top = 0;
     for (let k = 1; k < counts.length; k++) if (counts[k] > counts[top]) top = k;
-    if (counts[top] <= total * INNER_BACKGROUND_SHARE) return null;
+    if (counts[top] <= alpha.length * INNER_BACKGROUND_SHARE) return null;
     return [sums[top * 3] / counts[top], sums[top * 3 + 1] / counts[top], sums[top * 3 + 2] / counts[top]];
   }
 
