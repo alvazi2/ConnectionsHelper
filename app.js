@@ -12,8 +12,10 @@
   const boardScreen = $('board-screen');
   const board = $('board');
   const fileInput = $('file-input');
+  const boardFileInput = $('board-file-input');
   const loadButton = $('load-button');
   const pasteButton = $('paste-button');
+  const boardPasteButton = $('board-paste-button');
   const backButton = $('back-button');
   const statusBox = $('status');
   const statusText = $('status-text');
@@ -150,9 +152,11 @@
         loadImage(blob.type ? blob : new Blob([blob], { type }));
         return;
       }
+      showScreen('load');
       showError('There is no image on the clipboard. Copy a screenshot first, then tap Paste screenshot.');
     } catch (err) {
       console.error(err);
+      showScreen('load');
       showError(err.name === 'NotAllowedError'
         ? "Clipboard access wasn't allowed. Tap Paste screenshot again and choose Paste."
         : "Couldn't read the clipboard.");
@@ -330,25 +334,26 @@
 
   // ---- Wiring ----
 
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files[0];
-    fileInput.value = '';
-    if (file) loadImage(file);
-  });
+  // The board has its own file input so picking a new puzzle doesn't go through the load screen.
+  for (const input of [fileInput, boardFileInput]) {
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      input.value = '';
+      if (file) loadImage(file);
+    });
+  }
 
   // The async clipboard API only exists in secure contexts (HTTPS or localhost).
-  pasteButton.hidden = typeof navigator.clipboard?.read !== 'function';
-  pasteButton.addEventListener('click', pasteFromClipboard);
+  // The board has its own copy so a new puzzle is one tap away instead of going through the load screen.
+  for (const button of [pasteButton, boardPasteButton]) {
+    button.hidden = typeof navigator.clipboard?.read !== 'function';
+    button.addEventListener('click', pasteFromClipboard);
+  }
 
   backButton.addEventListener('click', () => {
     errorBox.hidden = true;
     showScreen('board');
     fitAllLabels();
-  });
-
-  $('new-button').addEventListener('click', () => {
-    errorBox.hidden = true;
-    showScreen('load');
   });
 
   $('clear-button').addEventListener('click', () => {

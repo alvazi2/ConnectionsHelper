@@ -4,7 +4,7 @@ A different way to play the NYT Connections puzzle on an iPad. You load a screen
 
 - **Drag** a tile onto another tile to swap them.
 - **Tap** a tile to cycle its color: yellow → green → blue → purple → none.
-- **Clear colors** removes all color tags. **New screenshot** loads a different puzzle.
+- **Clear colors** removes all color tags. **Load screenshot** loads a different puzzle, and **Paste screenshot** loads one straight from the clipboard.
 - The board is saved in the browser, so closing and reopening the app keeps your arrangement.
 - If a tile holds a symbol or picture instead of a word, the tile shows that picture cut from the screenshot. When most tiles look like pictures, every tile is shown as a picture.
 - A word too long for one line, such as PEPPERMINT PATTY, is read off both lines and joined back into one word.
