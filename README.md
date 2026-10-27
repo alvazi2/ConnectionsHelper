@@ -9,7 +9,7 @@ A different way to play the NYT Connections puzzle on an iPad. You load a screen
 - If a tile holds a symbol or picture instead of a word, the tile shows that picture cut from the screenshot. When most tiles look like pictures, every tile is shown as a picture.
 - A word too long for one line, such as PEPPERMINT PATTY, is read off both lines and joined back into one word.
 
-Words are read in the browser with [Tesseract.js](https://github.com/naptha/tesseract.js). Nothing is uploaded. The first run downloads the text-recognition engine and the German and English language data from jsDelivr (a few MB). German is there for umlauts such as Ü, which the English data can't read. After that they're cached.
+Words are read in the browser with [Tesseract.js](https://github.com/naptha/tesseract.js). Nothing is uploaded. The first run downloads the text-recognition engine and English language data from jsDelivr (a few MB). After that they're cached.
 
 The language data is Tesseract's `fast` model rather than the `best_int` one Tesseract.js loads by default, because `best_int` misreads the puzzle's bold capitals as small letters (see `LANG_PATH` in `ocr.js`).
 

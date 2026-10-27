@@ -3,7 +3,7 @@
   'use strict';
 
   const LOAD_ERROR = "The text reader couldn't load. Check your internet connection and try again.";
-  const WORD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜäöü0123456789 '-&.!";
+  const WORD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '-&.!";
   const COLOR_TOLERANCE = 14;
   // A tile's word is read as a block of lines, not a single line: a word too long to fit, such as
   // PEPPERMINT PATTY, wraps onto two lines, and single-line mode squashes those into one short guess.
@@ -17,10 +17,6 @@
   // the puzzle's bold face: OUT reads as "out", and forcing capitals through the whitelist scores the
   // word 0, so the tile falls back to a picture. The "fast" model reads the same tile at 96.
   const LANG_PATH = 'https://cdn.jsdelivr.net/gh/tesseract-ocr/tessdata_fast@4.1.0';
-  // The English model has no umlauts, so ÜBER reads as UBER; the German one has Ä, Ö and Ü. German
-  // alone reads some plain words poorly (COOT scores 25 and becomes a picture), so English stays as
-  // the second model: Tesseract keeps whichever reads a word with more confidence.
-  const LANGS = 'deu+eng';
 
   let workerPromise = null;
   let logHandler = null;
@@ -28,7 +24,7 @@
   function getWorker() {
     if (!window.Tesseract) return Promise.reject(new Error(LOAD_ERROR));
     if (!workerPromise) {
-      workerPromise = Tesseract.createWorker(LANGS, 1, {
+      workerPromise = Tesseract.createWorker('eng', 1, {
         langPath: LANG_PATH,
         gzip: false,
         logger: (m) => logHandler && logHandler(m),
@@ -309,7 +305,7 @@
     });
     const { data } = await worker.recognize(canvas, {}, { blocks: true });
     const found = collectWords(data)
-      .filter((w) => w.confidence >= 60 && /^[A-ZÄÖÜ0-9][A-ZÄÖÜ0-9'&.!-]+$/.test(w.text))
+      .filter((w) => w.confidence >= 60 && /^[A-Z0-9][A-Z0-9'&.!-]+$/.test(w.text))
       .sort((a, b) => a.bbox.y0 - b.bbox.y0);
 
     const rows = [];
